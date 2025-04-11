@@ -1,0 +1,108 @@
+---
+title: "Methionine Madness"
+subtitle: "Codons as 2025 NCAA Division I Men's Basketball Tournament Teams"
+author: "John Hinkle"
+format: html
+editor: visual
+self-contained: true
+---
+
+# Introduction
+
+There are 64 possible 3-base combinations of the four nucleotides (A, C, G, T) that make up DNA. These 64 combinations are known as codons. 61 of these 64 codons are responsible for encoding the 20 amino acids which are used to build proteins. The remaining 3 codons encode a "STOP" signal.
+
+64 is also the number of teams that play in the first round of the NCAA Division I Men's Basketball Tournament (let's ignore the First Four in Dayton for the sake of this exercise).
+
+## Load packages
+
+```{r}
+library(tidyverse) # for tidyverse suite of packages
+library(readxl) # for reading in data
+library(ggplot2) # for plotting
+library(cbbplotR) # for team logos
+```
+
+## Load and inspect data
+
+```{r}
+d1 <- read_excel("first-round-teams.xlsx")
+d2 <- read_excel("codons.xlsx")
+
+head(d1)
+tail(d1)
+head(d2)
+tail(d2)
+```
+
+## Shuffle codon data
+
+The codon data set is listed in order of amino acid. I don't want the top seeds in a region encoding for the same amino acid, so I will shuffle the data.
+
+```{r}
+d2 <- d2[sample(nrow(d2)), ]
+```
+
+## Joining data sets
+
+```{r}
+d3 <- cbind(d1, d2)
+d3
+```
+
+## Codon helper function
+
+This is a function that will split a DNA sequence into codons. If the number of nucleotides is not divisible by three, the extra nucleotides will be removed. This is a helper function for the subsequent function.
+
+```{r}
+splitter <- function(dna_seq) {
+  dna_seq <- gsub("\\s+", "", dna_seq)
+  dna_seq <- toupper(dna_seq)
+
+  # Check length is divisible by 3 (optional)
+  if (nchar(dna_seq) %% 3 != 0) {
+    warning("DNA sequence length is not a multiple of 3. Extra nucleotides will be removed!")
+  }
+
+  # Split into codons
+  codons <- substring(dna_seq,
+                      seq(1, nchar(dna_seq) - 2, by = 3), 
+                      seq(3, nchar(dna_seq), by = 3))
+
+  return(codons)
+}
+```
+
+## Converting DNA sequence to team logos function
+
+```{r}
+team_seq <- function(dna_seq) {
+  d <- d3
+  codons <- splitter(dna_seq)
+  teams <- d$Team[match(codons, d$Codon)]
+  seeds <- d$OverallSeed[match(teams, d$Team)]
+  avg_seed <- round(mean(seeds)/4)
+  
+  random_team_data <- tibble(
+    val1 = seq_along(teams),
+    val2 = 1,
+    Team = teams
+  )
+  
+
+  p <- ggplot(data = random_team_data, aes(x = val1, y = val2, team = Team)) +
+    geom_cbb_teams(width = 1 / length(teams) * 0.4) +
+    labs(title = paste("The sequence contains the following teams, and the average seed is", avg_seed)) +
+    theme_void()
+  
+  return(p)
+}
+```
+
+## Example
+
+```{r}
+team_seq("ATTTGGCGGCATGCAT")
+```
+
+```{r}
+```
