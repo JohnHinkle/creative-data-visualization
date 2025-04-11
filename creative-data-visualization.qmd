@@ -25,8 +25,8 @@ library(cbbplotR) # for team logos
 ## Load and inspect data
 
 ```{r}
-d1 <- read_excel("first-round-teams.xlsx")
-d2 <- read_excel("codons.xlsx")
+d1 <- read_excel("./data/first-round-teams.xlsx")
+d2 <- read_excel("./data/codons.xlsx")
 
 head(d1)
 tail(d1)
