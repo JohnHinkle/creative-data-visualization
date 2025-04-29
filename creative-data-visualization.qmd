@@ -24,14 +24,18 @@ library(cbbplotR) # for team logos
 
 ## Load and inspect data
 
-```{r}
-d1 <- read_excel("./data/first-round-teams.xlsx")
-d2 <- read_excel("./data/codons.xlsx")
+There are three data sets.
 
-head(d1)
-tail(d1)
-head(d2)
-tail(d2)
+[TEAMS]{.underline} contains information about the 64 teams that played in the first round of the 2025 NCAA Men's Basketball Tournament.
+
+[CODONS]{.underline} contains all 64 codons and what amino acid (or STOP signal) each encodes for.
+
+[SCORERS]{.underline} contains data about the leading scorer of each first round team.
+
+```{r}
+TEAMS <- read_excel("./data/first-round-teams.xlsx")
+CODONS <- read_excel("./data/codons.xlsx")
+SCORERS <- read_excel("./data/leading-scorers.xlsx")
 ```
 
 ## Shuffle codon data
@@ -39,19 +43,21 @@ tail(d2)
 The codon data set is listed in order of amino acid. I don't want the top seeds in a region encoding for the same amino acid, so I will shuffle the data.
 
 ```{r}
-d2 <- d2[sample(nrow(d2)), ]
+CODONS <- CODONS[sample(nrow(CODONS)), ]
 ```
 
 ## Joining data sets
 
+This assigns a codon to each team
+
 ```{r}
-d3 <- cbind(d1, d2)
-d3
+TEAMS_CODONS <- cbind(TEAMS, CODONS)
+TEAMS_CODONS
 ```
 
 ## Codon helper function
 
-This is a function that will split a DNA sequence into codons. If the number of nucleotides is not divisible by three, the extra nucleotides will be removed. This is a helper function for the subsequent function.
+**splitter()** is a function that splits a DNA sequence into codons. If the number of nucleotides is not divisible by three, the extra nucleotides will be removed. *This is a helper function for the **team_seq()** function.*
 
 ```{r}
 splitter <- function(dna_seq) {
@@ -72,15 +78,18 @@ splitter <- function(dna_seq) {
 }
 ```
 
-## Converting DNA sequence to team logos function
+## Visualizing DNA codons as team logos
+
+This function reads in a DNA sequence, splits it into codons (using the splitter() function). It then matches the codons contained in the sequence to teams, and prints out the team logos. The team logos are obtained from the **cbbplotR** package.
 
 ```{r}
 team_seq <- function(dna_seq) {
-  d <- d3
+  d <- TEAMS_CODONS
   codons <- splitter(dna_seq)
   teams <- d$Team[match(codons, d$Codon)]
   seeds <- d$OverallSeed[match(teams, d$Team)]
-  avg_seed <- round(mean(seeds)/4)
+  avg_seed <- mean(seeds)
+  rounded_seed <- round(avg_seed)
   
   random_team_data <- tibble(
     val1 = seq_along(teams),
@@ -88,10 +97,9 @@ team_seq <- function(dna_seq) {
     Team = teams
   )
   
-
   p <- ggplot(data = random_team_data, aes(x = val1, y = val2, team = Team)) +
     geom_cbb_teams(width = 1 / length(teams) * 0.4) +
-    labs(title = paste("The sequence contains the following teams, and the average seed is", avg_seed)) +
+    labs(title = paste("The sequence contains the following teams, and the average overall seed is", rounded_seed)) +
     theme_void()
   
   return(p)
@@ -101,8 +109,91 @@ team_seq <- function(dna_seq) {
 ## Example
 
 ```{r}
-team_seq("ATTTGGCGGCATGCAT")
+team_seq("ATTATTATTATT")
+```
+
+## Player ID function
+
+This function obtains the unique player ID assigned to every college basketball player in the ESPN database.
+
+```{r}
+get_all_player_ids <- function(team_list) {
+  all_players <- data.frame()
+
+  for (team in team_list) {
+    players <- get_espn_players(team)
+    players_subset <- players[, c("id", "displayName")]
+    players_subset$Team <- team
+
+    all_players <- rbind(all_players, players_subset)
+  }
+
+  return(all_players)
+}
+```
+
+## Add leading scorer and their ID to data set
+
+```{r}
+player_ids <- get_all_player_ids(TEAMS_CODONS$Team)
+TEAMS_CODONS_PLAYERS <- left_join(TEAMS_CODONS, SCORERS, by = "Team") |> 
+  left_join(player_ids, by = c("LeadingScorer" = "displayName", "Team" = "Team"))
+TEAMS_CODONS_PLAYERS
+```
+
+### Fixing a consequence of the transfer portal
+
+Donovan Dent (New Mexico's leading scorer in the 2024-25 season) recently transferred to UCLA. ESPN has already listed him as a UCLA player, so I have to go in and manually add his ID in.
+
+```{r}
+# fix the portal
+TEAMS_CODONS_PLAYERS$id[42] <- 5107782
 ```
 
 ```{r}
+# Combine codons by amino acid
+grouped <- TEAMS_CODONS_PLAYERS |>
+  group_by(AminoAcid) |>
+  summarize(AllCodons = list(Codon), .groups = "drop")
+
+# Determine the team whose leading scorer will represent an amino acid
+winners <- TEAMS_CODONS_PLAYERS |>
+  group_by(AminoAcid) |>
+  slice_min(order_by = OverallSeed) |>
+  ungroup()
+
+# Create df with required information
+result <- winners |>
+  left_join(grouped, by = "AminoAcid") |>
+  select(Team, LeadingScorer, id, AminoAcid, AllCodons)
+```
+
+## Visualizing amino acids as star players
+
+```{r}
+player_seq <- function(dna_seq) {
+  d <- result
+  codons <- splitter(dna_seq)
+  matches <- sapply(d$AllCodons, function(row_codons) any(row_codons %in% codons))
+  pids <- unlist(lapply(codons, function(codon) {
+    matching_rows <- sapply(d$AllCodons, function(row_codons) codon %in% row_codons)
+    d$id[matching_rows]
+  }))
+
+
+    random_team_data <- tibble(
+    val1 = seq_along(pids),
+    val2 = 1,
+    PID = pids
+  ) 
+  p <- ggplot(data = random_team_data, aes(x = val1, y = val2)) +
+    geom_cbb_headshots(aes(player_id = PID, width = 1 / length(pids) * 0.4)) +
+    labs(title = paste("Title")) +
+    theme_void()
+  
+  return(p)
+  
+}
+  
+player_seq("ATTATTATTATT")
 ```
