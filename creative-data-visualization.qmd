@@ -13,13 +13,14 @@ There are 64 possible 3-base combinations of the four nucleotides (A, C, G, T) t
 
 64 is also the number of teams that play in the first round of the NCAA Division I Men's Basketball Tournament (let's ignore the First Four in Dayton for the sake of this exercise).
 
-## Load packages
+## Load packages and set seed
 
 ```{r}
 library(tidyverse) # for tidyverse suite of packages
 library(readxl) # for reading in data
 library(ggplot2) # for plotting
 library(cbbplotR) # for team logos
+set.seed(64) # for reproducibility
 ```
 
 ## Load and inspect data
@@ -109,8 +110,14 @@ team_seq <- function(dna_seq) {
 ## Example
 
 ```{r}
-team_seq("ATTATTATTATT")
+team_seq("ATTTAGCGT")
 ```
+
+## Amino Acids
+
+Codons encode for an amino acid (or a stop signal). There are 20 amino acids plus the stop signal. This section will visualize amino acids as "star players" (as determined by who is a team's leading scorer).
+
+Several codons encode for the same amino acid, so in this exercise the highest seeded team will have their star player be represented as the amino acid. So if the #1, #15, and #42 teams are all associated with codons that encode for the same amino acid, then the amino acid will be visualized as the star player for the #1 team.
 
 ## Player ID function
 
@@ -149,6 +156,8 @@ Donovan Dent (New Mexico's leading scorer in the 2024-25 season) recently transf
 # fix the portal
 TEAMS_CODONS_PLAYERS$id[42] <- 5107782
 ```
+
+## Determine which team will have their star player represent an amino acid.
 
 ```{r}
 # Combine codons by amino acid
@@ -195,5 +204,5 @@ player_seq <- function(dna_seq) {
   
 }
   
-player_seq("ATTATTATTATT")
+player_seq("ATTTAGCGT")
 ```
