@@ -197,7 +197,7 @@ player_seq <- function(dna_seq) {
   ) 
   p <- ggplot(data = random_team_data, aes(x = val1, y = val2)) +
     geom_cbb_headshots(aes(player_id = PID, width = 1 / length(pids) * 0.4)) +
-    labs(title = paste("Title")) +
+    labs(title = paste("Amino Acids as Star Players")) +
     theme_void()
   
   return(p)
