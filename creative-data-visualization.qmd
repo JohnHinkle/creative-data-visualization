@@ -110,10 +110,10 @@ team_seq <- function(dna_seq) {
 ## Example
 
 ```{r}
-team_seq("ATTTAGCGT")
+team_seq("TATCGCCCC")
 ```
 
-## Amino Acids
+## Amino Acid Visualization
 
 Codons encode for an amino acid (or a stop signal). There are 20 amino acids plus the stop signal. This section will visualize amino acids as "star players" (as determined by who is a team's leading scorer).
 
@@ -148,7 +148,7 @@ TEAMS_CODONS_PLAYERS <- left_join(TEAMS_CODONS, SCORERS, by = "Team") |>
 TEAMS_CODONS_PLAYERS
 ```
 
-### Fixing a consequence of the transfer portal
+### Fix a consequence of the transfer portal
 
 Donovan Dent (New Mexico's leading scorer in the 2024-25 season) recently transferred to UCLA. ESPN has already listed him as a UCLA player, so I have to go in and manually add his ID in.
 
@@ -158,6 +158,15 @@ TEAMS_CODONS_PLAYERS$id[42] <- 5107782
 ```
 
 ## Determine which team will have their star player represent an amino acid.
+
+This code produces a data frame with the name and id of the star player that is chosen to represent an amino acid. The star player from the highest seeded team is chosen to represent the amino acid (or stop) encoded for by each codon.
+
+**Ex:** GCG (#2 Duke) , GCC (#27 Saint Mary's), GCT (#26 Marquette), and GCA (#52 High Point) all encode for Alanine. #2 Duke is the highest seeded team so Alanine will be represented by Duke's star player, Cooper Flagg.
+
+```{r}
+# example
+filter(TEAMS_CODONS, AminoAcid == "Alanine")
+```
 
 ```{r}
 # Combine codons by amino acid
@@ -189,20 +198,23 @@ player_seq <- function(dna_seq) {
     d$id[matching_rows]
   }))
 
-
+    matched_rows <- d[d$id %in% pids, ]
+    
     random_team_data <- tibble(
     val1 = seq_along(pids),
     val2 = 1,
-    PID = pids
+    PID = pids,
+    AA = matched_rows$AminoAcid[match(pids, matched_rows$id)]
   ) 
   p <- ggplot(data = random_team_data, aes(x = val1, y = val2)) +
     geom_cbb_headshots(aes(player_id = PID, width = 1 / length(pids) * 0.4)) +
     labs(title = paste("Amino Acids as Star Players")) +
+    geom_text(aes(label = AA), vjust = -3.0) +
     theme_void()
   
   return(p)
   
 }
   
-player_seq("ATTTAGCGT")
+player_seq("TATCGCCCC")
 ```
